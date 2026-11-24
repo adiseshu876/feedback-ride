@@ -1,0 +1,159 @@
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">M</div>
+      <div><strong>MoveInSync</strong><span>VISITOR MANAGEMENT</span></div>
+    </div>
+    <div class="topbar-right"><span class="live-dot"></span> Front desk workspace <span class="avatar">FD</span></div>
+  </header>
+
+  <main class="page">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">WORKPLACE OPERATIONS</p>
+        <h1>Visitor management</h1>
+        <p class="subtitle">Register visitors and manage their entry status.</p>
+      </div>
+      <div class="today-pill">{{ visits.length }} visits today</div>
+    </section>
+
+    <div class="success-banner" *ngIf="submittedMessage">
+      <span>✓</span> {{ submittedMessage }}
+      <button type="button" aria-label="Dismiss" (click)="submittedMessage = ''">×</button>
+    </div>
+
+    <section class="panel wizard-panel">
+      <div class="section-heading">
+        <div><h2>New visitor registration</h2><p>Complete all three steps to register a visitor.</p></div>
+        <span class="step-count">STEP {{ currentStep }} OF 3</span>
+      </div>
+
+      <div class="stepper">
+        <div class="step-item" [class.active]="currentStep === 1" [class.complete]="currentStep > 1">
+          <span class="step-number">{{ currentStep > 1 ? '✓' : '1' }}</span><span>Visitor details</span>
+        </div>
+        <div class="step-line" [class.complete-line]="currentStep > 1"></div>
+        <div class="step-item" [class.active]="currentStep === 2" [class.complete]="currentStep > 2">
+          <span class="step-number">{{ currentStep > 2 ? '✓' : '2' }}</span><span>Visit details</span>
+        </div>
+        <div class="step-line" [class.complete-line]="currentStep > 2"></div>
+        <div class="step-item" [class.active]="currentStep === 3">
+          <span class="step-number">3</span><span>Review & submit</span>
+        </div>
+      </div>
+
+      <form [formGroup]="visitorForm" *ngIf="currentStep === 1" (ngSubmit)="nextFromStepOne()" novalidate>
+        <div class="form-content">
+          <div class="form-intro"><h3>Who is visiting?</h3><p>Enter the visitor's basic contact information.</p></div>
+          <div class="field">
+            <label for="visitorName">Visitor full name <span class="required">*</span></label>
+            <input id="visitorName" type="text" formControlName="name" placeholder="e.g. Priya Sharma" autocomplete="off">
+            <small class="error" *ngIf="nameControl?.touched && nameControl?.hasError('required')">Name is required.</small>
+            <small class="error" *ngIf="nameControl?.touched && nameControl?.hasError('minlength')">Minimum 3 characters required.</small>
+          </div>
+          <div class="field">
+            <label for="contact">Contact number <span class="required">*</span></label>
+            <input id="contact" type="tel" formControlName="contact" placeholder="e.g. +91 9812341234" autocomplete="off">
+            <small class="hint">10-digit Indian mobile number, with optional +91 prefix.</small>
+            <small class="error" *ngIf="contactControl?.touched && contactControl?.invalid">Enter a valid number: 10 digits or +91 followed by 10 digits (no spaces or hyphens).</small>
+          </div>
+        </div>
+        <div class="form-actions right"><button class="btn btn-primary" type="submit" [disabled]="visitorForm.invalid">Continue <span>→</span></button></div>
+      </form>
+
+      <form [formGroup]="visitForm" *ngIf="currentStep === 2" (ngSubmit)="goToStep(3)" novalidate>
+        <div class="form-content">
+          <div class="form-intro"><h3>Details of the visit</h3><p>Tell us why the visitor is coming and who they are meeting.</p></div>
+          <div class="field">
+            <label for="purpose">Purpose of visit <span class="required">*</span></label>
+            <select id="purpose" formControlName="purpose">
+              <option value="" disabled>Select a purpose</option>
+              <option *ngFor="let purpose of purposes" [value]="purpose">{{ purpose }}</option>
+            </select>
+            <small class="error" *ngIf="purposeControl?.touched && purposeControl?.invalid">Please select a purpose.</small>
+          </div>
+          <div class="field host-field">
+            <label for="hostSearch">Host employee <span class="required">*</span></label>
+            <div class="host-picker">
+              <input id="hostSearch" type="text" [value]="hostSearch" (input)="onHostSearchChange($any($event.target).value)"
+                (focus)="hostDropdownOpen = true" placeholder="Search by host name or employee ID" autocomplete="off">
+              <div class="host-options" *ngIf="hostDropdownOpen">
+                <button type="button" class="host-option" *ngFor="let host of filteredHosts" (click)="selectHost(host)">
+                  <span class="host-avatar">{{ host.name.charAt(0) }}</span>
+                  <span class="host-meta"><strong>{{ host.name }}</strong><small>{{ host.id }}</small></span>
+                  <span class="selected-check" *ngIf="selectedHost?.id === host.id">✓</span>
+                </button>
+                <div class="no-hosts" *ngIf="filteredHosts.length === 0">No hosts found. Try another name or ID.</div>
+              </div>
+            </div>
+            <small class="selected-host" *ngIf="selectedHost">Selected: {{ selectedHost.name }} ({{ selectedHost.id }})</small>
+            <small class="error" *ngIf="visitForm.get('hostEmployee')?.touched && visitForm.get('hostEmployee')?.invalid">Please select a host from the list.</small>
+          </div>
+        </div>
+        <div class="form-actions between">
+          <button class="btn btn-secondary" type="button" (click)="goToStep(1)">← Back</button>
+          <button class="btn btn-primary" type="submit" [disabled]="visitForm.invalid">Review details <span>→</span></button>
+        </div>
+      </form>
+
+      <div *ngIf="currentStep === 3" class="form-content review-content">
+        <div class="form-intro"><h3>Review visitor information</h3><p>Check the details below before submitting the registration.</p></div>
+        <div class="review-card">
+          <div class="review-heading"><div><span class="review-icon">01</span><strong>Visitor details</strong></div><button class="edit-link" type="button" (click)="goToStep(1)">Edit</button></div>
+          <div class="review-grid"><div><small>FULL NAME</small><strong>{{ visitorForm.value.name }}</strong></div><div><small>CONTACT NUMBER</small><strong>{{ visitorForm.value.contact }}</strong></div></div>
+        </div>
+        <div class="review-card">
+          <div class="review-heading"><div><span class="review-icon">02</span><strong>Visit details</strong></div><button class="edit-link" type="button" (click)="goToStep(2)">Edit</button></div>
+          <div class="review-grid"><div><small>PURPOSE</small><strong>{{ visitForm.value.purpose }}</strong></div><div><small>HOST EMPLOYEE</small><strong>{{ selectedHost?.name }}</strong><span class="muted">{{ selectedHost?.id }}</span></div></div>
+        </div>
+        <div class="pending-note"><span>ⓘ</span><div><strong>Approval required</strong><p>This visitor will be added to the board with PENDING status. The host can approve or reject the request.</p></div></div>
+        <div class="form-actions between">
+          <button class="btn btn-secondary" type="button" (click)="goToStep(2)">← Back</button>
+          <button class="btn btn-primary" type="button" (click)="submitVisit()">Submit registration <span>→</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel board-panel">
+      <div class="section-heading board-heading">
+        <div><h2>Today's visitors</h2><p>Track visitor requests and manage entry approvals.</p></div>
+        <span class="board-total">{{ visits.length }} TOTAL</span>
+      </div>
+      <div class="filter-tabs">
+        <button type="button" [class.active]="activeFilter === 'ALL'" (click)="activeFilter = 'ALL'">All <span>{{ visits.length }}</span></button>
+        <button type="button" [class.active]="activeFilter === 'PENDING'" (click)="activeFilter = 'PENDING'">Pending <span>{{ pendingCount }}</span></button>
+        <button type="button" [class.active]="activeFilter === 'ON_PREMISES'" (click)="activeFilter = 'ON_PREMISES'">On premises <span>{{ onPremisesCount }}</span></button>
+      </div>
+
+      <div class="table-wrap" *ngIf="visibleVisits.length > 0; else emptyBoard">
+        <table>
+          <thead><tr><th>VISITOR</th><th>VISIT DETAILS</th><th>HOST</th><th>STATUS</th><th class="actions-head">ACTIONS</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let visit of visibleVisits; trackBy: trackByVisitId">
+              <td><div class="visitor-cell"><span class="visitor-avatar">{{ visit.visitor.name.charAt(0).toUpperCase() }}</span><div><strong>{{ visit.visitor.name }}</strong><small>{{ visit.id }} · {{ visit.visitor.contact }}</small></div></div></td>
+              <td><strong>{{ visit.purpose }}</strong><small class="sub-cell">{{ visit.createdAt | date:'shortTime' }}</small></td>
+              <td><strong>{{ hostName(visit.hostEmployee) }}</strong><small class="sub-cell">{{ visit.hostEmployee }}</small></td>
+              <td><span class="state-chip" [ngClass]="visit.state.toLowerCase()">{{ stateLabel(visit.state) }}</span></td>
+              <td class="action-cell">
+                <ng-container [ngSwitch]="visit.state">
+                  <ng-container *ngSwitchCase="'PENDING'">
+                    <button class="action-btn approve" type="button" (click)="transition(visit, 'APPROVE')">Approve</button>
+                    <button class="action-btn reject" type="button" (click)="transition(visit, 'REJECT')">Reject</button>
+                  </ng-container>
+                  <button *ngSwitchCase="'APPROVED'" class="action-btn checkin" type="button" (click)="transition(visit, 'CHECK_IN')">Check in</button>
+                  <button *ngSwitchCase="'CHECKED_IN'" class="action-btn checkout" type="button" (click)="transition(visit, 'CHECK_OUT')">Check out</button>
+                  <span *ngSwitchDefault class="no-action">—</span>
+                </ng-container>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #emptyBoard>
+        <div class="empty-state"><div class="empty-icon">▤</div><strong>{{ visits.length === 0 ? 'No visitors registered yet' : 'No visitors in this view' }}</strong><p>{{ visits.length === 0 ? 'Complete the registration form above to add your first visitor.' : 'Try another filter to see visitor records.' }}</p></div>
+      </ng-template>
+      <div class="board-footnote"><span class="live-dot"></span> Status updates are reflected immediately · All data is stored in this session only</div>
+    </section>
+    <footer>MoveInSync · Visitor Management Demo</footer>
+  </main>
+</div>
